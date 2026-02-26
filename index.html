@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pelvic Control Routine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+            color: #1e293b;
+            touch-action: manipulation;
+        }
+
+        .timer-ring {
+            transition: stroke-dashoffset 0.35s;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+
+        .elevator-shaft {
+            height: 180px;
+            width: 50px;
+            background: #e2e8f0;
+            border-radius: 25px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .elevator-car {
+            position: absolute;
+            width: 100%;
+            height: 25%;
+            background: #6366f1;
+            bottom: 0;
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 25px;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .expansion-circle, .flick-circle {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .expansion-circle {
+            transition-duration: 2.5s;
+        }
+
+        .flick-active {
+            transform: scale(1.2);
+            background-color: #fee2e2;
+            border-color: #ef4444;
+            color: #b91c1c;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center min-h-screen p-4">
+
+    <div class="w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-slate-200 relative">
+
+        <!-- Transition Screen -->
+        <div id="transition-screen" class="hidden absolute inset-0 z-50 bg-indigo-600 text-white flex flex-col items-center justify-center p-8 text-center">
+            <span class="text-indigo-200 text-xs font-black uppercase tracking-widest mb-2">Rest & Prepare</span>
+            <h2 class="text-3xl font-bold mb-6">Up Next:</h2>
+            <div class="bg-indigo-500 rounded-2xl p-6 w-full mb-8">
+                <h3 id="next-title" class="text-xl font-bold mb-2">Next Phase</h3>
+                <p id="next-desc" class="text-indigo-100 text-sm italic">"Focus tip goes here..."</p>
+            </div>
+            <div class="flex flex-col items-center">
+                <span class="text-5xl font-black mb-2" id="break-timer">5</span>
+                <span class="text-[10px] uppercase font-bold tracking-widest opacity-60">Starting in...</span>
+            </div>
+        </div>
+
+        <!-- Progress Header -->
+        <div class="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold">
+                    <span id="phase-number">1</span>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-800" id="phase-title">Body Scan</h1>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Daily Routine</p>
+                </div>
+            </div>
+            <div id="total-clock" class="text-2xl font-mono font-bold text-indigo-600">05:00</div>
+        </div>
+
+        <!-- Timer & Visuals -->
+        <div class="px-8 py-10 flex flex-col items-center">
+            <div id="visualizer-space" class="h-40 flex items-center justify-center w-full mb-8">
+                <!-- Circular Timer -->
+                <div id="timer-container" class="relative">
+                    <svg width="150" height="150">
+                        <circle cx="75" cy="75" r="65" stroke="#f1f5f9" stroke-width="6" fill="transparent" />
+                        <circle id="progress-ring" cx="75" cy="75" r="65" stroke="#6366f1" stroke-width="6" fill="transparent" stroke-dasharray="408.4" stroke-dashoffset="0" class="timer-ring" />
+                    </svg>
+                    <div id="main-timer-box" class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span id="main-timer-val" class="text-4xl font-bold">30</span>
+                        <span class="text-[10px] uppercase text-slate-400 font-bold tracking-tighter">seconds</span>
+                    </div>
+                </div>
+
+                <!-- Elevator Visualizer -->
+                <div id="elevator-viz" class="hidden flex gap-8 items-center">
+                    <div class="elevator-shaft">
+                        <div id="elevator-car" class="elevator-car"></div>
+                    </div>
+                    <div class="flex flex-col justify-between h-[180px] py-4">
+                        <div id="floor-3" class="text-xs font-bold text-slate-300">FLOOR 3: 100%</div>
+                        <div id="floor-2" class="text-xs font-bold text-slate-300">FLOOR 2: 50%</div>
+                        <div id="floor-1" class="text-xs font-bold text-indigo-600">FLOOR 1: 0%</div>
+                        <div id="floor-b" class="text-xs font-bold text-slate-300">FLOOR B: DROP</div>
+                    </div>
+                </div>
+
+                <!-- Expansion Visualizer -->
+                <div id="expansion-viz" class="hidden">
+                    <div id="expand-circle" class="w-24 h-24 rounded-full border-[6px] border-emerald-400 bg-emerald-50 flex items-center justify-center expansion-circle">
+                         <span class="text-emerald-700 font-bold text-xs">EXPAND</span>
+                    </div>
+                </div>
+
+                <!-- Flick Visualizer -->
+                <div id="flick-viz" class="hidden flex flex-col items-center gap-4">
+                    <div id="flick-cue" class="w-24 h-24 rounded-full border-[6px] border-slate-200 bg-slate-50 flex items-center justify-center flick-circle">
+                         <span id="flick-label" class="text-slate-400 font-bold text-xs">RELEASE</span>
+                    </div>
+                    <div class="text-center">
+                        <span id="flick-count" class="text-3xl font-black text-indigo-600">0</span>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Reps</p>
+                    </div>
+                </div>
+
+                <!-- Pulse Visualizer -->
+                <div id="pulse-viz" class="hidden relative w-32 h-32 flex items-center justify-center">
+                    <div id="pulse-baseline" class="absolute w-24 h-24 rounded-full border-4 border-rose-300 bg-rose-50"></div>
+                    <div id="pulse-spire" class="absolute w-24 h-24 rounded-full border-[6px] border-rose-500 opacity-50 transition-transform duration-500"></div>
+                    <span id="pulse-label" class="text-rose-600 font-bold text-[10px] z-10 transition-colors">HOLD 80%</span>
+                </div>
+
+                <!-- Endurance Visualizer -->
+                <div id="endurance-viz" class="hidden flex flex-col items-center gap-3">
+                    <div class="w-12 h-24 border-4 border-amber-300 rounded-lg relative overflow-hidden bg-amber-50">
+                        <div id="endurance-fill" class="absolute bottom-0 w-full bg-amber-400 transition-all duration-1000" style="height: 100%;"></div>
+                    </div>
+                    <span class="text-amber-600 font-bold text-[10px] uppercase tracking-widest">Hold 50%</span>
+                </div>
+            </div>
+
+            <!-- Detailed Instructions Panel -->
+            <div id="instruction-panel" class="w-full bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                <div class="mb-4">
+                    <span class="text-[10px] font-black uppercase text-indigo-500 tracking-widest">Current Action</span>
+                    <p id="action-text" class="text-sm text-slate-700 font-medium leading-relaxed"></p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <span class="text-[10px] font-black uppercase text-slate-400 tracking-widest">The Goal</span>
+                        <p id="goal-text" class="text-xs text-slate-600 mt-1"></p>
+                    </div>
+                    <div>
+                        <span class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Focus</span>
+                        <p id="focus-text" class="text-xs text-slate-600 mt-1"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Controls -->
+        <div class="p-6 bg-slate-50 flex gap-4">
+            <button id="start-btn" class="flex-[2] bg-indigo-600 text-white font-bold py-5 rounded-2xl shadow-xl shadow-indigo-200 active:scale-95 transition-all">
+                START SESSION
+            </button>
+            <button id="reset-btn" class="flex-1 bg-white border border-slate-200 text-slate-400 font-bold rounded-2xl active:bg-slate-50 transition-all">
+                RESET
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const routine = [
+            { title: "Body Scan & Isolation", action: "Breathe deeply into your belly. Let your stomach expand.", goal: "Feel the floor lower on inhale. Feel it lift on exhale.", focus: "Pure observation. No forced movement.", duration: 30, type: 'standard' },
+            { title: "The Slow Elevator", action: "Move pelvic floor between floors.", goal: "Clench control. Keep it smooth.", focus: "Slowly descend to Floor 1.", duration: 120, type: 'elevator' },
+            { title: "The Pulse Hold", action: "Squeeze to 80% capacity and hold.", goal: "Peak strength and muscular endurance.", focus: "Pulse up to 100% and back to 80%. Never drop fully.", duration: 45, type: 'pulse' },
+            { title: "The Reverse Kegel", action: "Visualize the floor widening outward.", goal: "Create space between sit-bones.", focus: "Expanding, not squeezing.", duration: 90, type: 'expansion' },
+            { title: "Rapid Flicks", action: "Quick 1-second cycles.", goal: "Neurological speed.", focus: "Release fully between reps.", duration: 60, type: 'flicks' },
+            { title: "Endurance Marathon", action: "Maintain a steady 50% effort contraction.", goal: "Long-duration stamina for slow-twitch fibers.", focus: "Find the middle ground. Don't overexert.", duration: 60, type: 'endurance' }
+        ];
+
+        let currentStep = 0;
+        let timeLeft = 30;
+        let totalTimeLeft = 405; // 30+120+45+90+60+60
+        let isRunning = false;
+        let isBreak = false;
+        let mainInterval = null;
+        let elevatorTimer = null;
+        let flickInterval = null;
+        let pulseInterval = null;
+        let flickCount = 0;
+
+        const startBtn = document.getElementById('start-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const mainTimerVal = document.getElementById('main-timer-val');
+        const totalClock = document.getElementById('total-clock');
+        const progressRing = document.getElementById('progress-ring');
+        const phaseTitle = document.getElementById('phase-title');
+        const phaseNumber = document.getElementById('phase-number');
+        const transitionScreen = document.getElementById('transition-screen');
+        const breakTimer = document.getElementById('break-timer');
+        const nextTitle = document.getElementById('next-title');
+        const nextDesc = document.getElementById('next-desc');
+        const actionText = document.getElementById('action-text');
+        const goalText = document.getElementById('goal-text');
+        const focusText = document.getElementById('focus-text');
+        const circumference = 2 * Math.PI * 65;
+
+        function updateUI() {
+            const step = routine[currentStep];
+            phaseTitle.textContent = step.title;
+            phaseNumber.textContent = currentStep + 1;
+            actionText.textContent = step.action;
+            goalText.textContent = step.goal;
+            focusText.textContent = step.focus;
+            mainTimerVal.textContent = timeLeft;
+
+            // Toggle Visuals
+            document.getElementById('timer-container').classList.toggle('hidden', step.type !== 'standard');
+            document.getElementById('elevator-viz').classList.toggle('hidden', step.type !== 'elevator');
+            document.getElementById('expansion-viz').classList.toggle('hidden', step.type !== 'expansion');
+            document.getElementById('flick-viz').classList.toggle('hidden', step.type !== 'flicks');
+            document.getElementById('pulse-viz').classList.toggle('hidden', step.type !== 'pulse');
+            document.getElementById('endurance-viz').classList.toggle('hidden', step.type !== 'endurance');
+
+            if (step.type === 'endurance') {
+                const fill = document.getElementById('endurance-fill');
+                if (fill) fill.style.height = `100%`;
+            }
+
+            if (isRunning && !isBreak) {
+                if (step.type === 'elevator') startElevator();
+                if (step.type === 'expansion') startExpansion();
+                if (step.type === 'flicks') startFlicks();
+                if (step.type === 'pulse') startPulse();
+            }
+        }
+
+        function setProgress(percent) {
+            const offset = circumference - (percent / 100 * circumference);
+            progressRing.style.strokeDashoffset = offset;
+        }
+
+        function startElevator() {
+            clearInterval(elevatorTimer);
+            const car = document.getElementById('elevator-car');
+            const seq = [{p:"25%",f:'floor-1'}, {p:"50%",f:'floor-2'}, {p:"75%",f:'floor-3'}, {p:"50%",f:'floor-2'}, {p:"25%",f:'floor-1'}, {p:"0%",f:'floor-b'}];
+            let i = 0;
+            const move = () => {
+                car.style.bottom = seq[i].p;
+                ['floor-b','floor-1','floor-2','floor-3'].forEach(f => document.getElementById(f).style.color = f===seq[i].f?'#6366f1':'#cbd5e1');
+                i = (i + 1) % seq.length;
+            };
+            move();
+            elevatorTimer = setInterval(move, 5000);
+        }
+
+        function startExpansion() {
+            const c = document.getElementById('expand-circle');
+            let exp = true;
+            const run = () => {
+                if (!isRunning || isBreak || currentStep !== 2) return;
+                c.style.transform = exp ? "scale(1.5)" : "scale(1.0)";
+                c.querySelector('span').textContent = exp ? "EXPAND" : "REST";
+                exp = !exp;
+                setTimeout(run, 3000);
+            };
+            run();
+        }
+
+        function startFlicks() {
+            clearInterval(flickInterval);
+            flickCount = 0;
+            const cue = document.getElementById('flick-cue'), lbl = document.getElementById('flick-label'), cnt = document.getElementById('flick-count');
+            let sq = false;
+            flickInterval = setInterval(() => {
+                if (!isRunning || isBreak) return;
+                sq = !sq;
+                if (sq) {
+                    cue.classList.add('flick-active');
+                    lbl.textContent = "SQUEEZE";
+                    flickCount++;
+                    cnt.textContent = flickCount;
+                } else {
+                    cue.classList.remove('flick-active');
+                    lbl.textContent = "RELEASE";
+                }
+            }, 1000);
+        }
+
+        function startPulse() {
+            clearInterval(pulseInterval);
+            const spire = document.getElementById('pulse-spire');
+            const lbl = document.getElementById('pulse-label');
+            let isPulsing = false;
+
+            // start initial state
+            spire.style.transform = "scale(1.0)";
+            lbl.textContent = "HOLD 80%";
+            lbl.classList.add('text-rose-600');
+            lbl.classList.remove('text-rose-700');
+
+            pulseInterval = setInterval(() => {
+                if (!isRunning || isBreak || routine[currentStep].type !== 'pulse') return;
+                isPulsing = !isPulsing;
+                if (isPulsing) {
+                    spire.style.transform = "scale(1.4)";
+                    lbl.textContent = "PULSE 100%";
+                    lbl.classList.add('text-rose-700');
+                    lbl.classList.remove('text-rose-600');
+                } else {
+                    spire.style.transform = "scale(1.0)";
+                    lbl.textContent = "HOLD 80%";
+                    lbl.classList.add('text-rose-600');
+                    lbl.classList.remove('text-rose-700');
+                }
+            }, 1000);
+        }
+
+        function runBreak() {
+            isBreak = true;
+            clearInterval(elevatorTimer);
+            clearInterval(flickInterval);
+            clearInterval(pulseInterval);
+
+            const next = routine[currentStep + 1];
+            nextTitle.textContent = next.title;
+            nextDesc.textContent = next.focus;
+
+            let bTime = 5;
+            breakTimer.textContent = bTime;
+            transitionScreen.classList.remove('hidden');
+
+            const bInt = setInterval(() => {
+                bTime--;
+                breakTimer.textContent = bTime;
+                if (bTime <= 0) {
+                    clearInterval(bInt);
+                    transitionScreen.classList.add('hidden');
+                    isBreak = false;
+                    currentStep++;
+                    timeLeft = routine[currentStep].duration;
+                    updateUI();
+                }
+            }, 1000);
+        }
+
+        function tick() {
+            if (isBreak) return;
+            timeLeft--;
+            totalTimeLeft--;
+
+            mainTimerVal.textContent = timeLeft;
+            const m = Math.floor(totalTimeLeft / 60), s = totalTimeLeft % 60;
+            totalClock.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            setProgress((timeLeft / routine[currentStep].duration) * 100);
+
+            if (routine[currentStep].type === 'endurance') {
+                const fill = document.getElementById('endurance-fill');
+                const pct = (timeLeft / routine[currentStep].duration) * 100;
+                if (fill) fill.style.height = `${pct}%`;
+            }
+
+            if (timeLeft <= 0) {
+                if (currentStep < routine.length - 1) {
+                    runBreak();
+                } else {
+                    isRunning = false;
+                    clearInterval(mainInterval);
+                    phaseTitle.textContent = "Complete";
+                    startBtn.textContent = "RESTART";
+                }
+            }
+        }
+
+        startBtn.addEventListener('click', () => {
+            if (isRunning) {
+                isRunning = false;
+                clearInterval(mainInterval);
+                clearInterval(elevatorTimer);
+                clearInterval(flickInterval);
+                clearInterval(pulseInterval);
+                startBtn.textContent = "RESUME";
+            } else {
+                if (startBtn.textContent === "RESTART") {
+                    currentStep = 0; timeLeft = 30; totalTimeLeft = 405;
+                }
+                isRunning = true;
+                mainInterval = setInterval(tick, 1000);
+                startBtn.textContent = "PAUSE";
+                updateUI();
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            location.reload();
+        });
+
+        updateUI();
+    </script>
+</body>
+</html>
+
