@@ -86,7 +86,7 @@
                     <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Daily Routine</p>
                 </div>
             </div>
-            <div id="total-clock" class="text-2xl font-mono font-bold text-indigo-600">05:00</div>
+            <div id="total-clock" class="text-2xl font-mono font-bold text-indigo-600">06:45</div>
         </div>
 
         <!-- Timer & Visuals -->
@@ -192,14 +192,15 @@
         ];
 
         let currentStep = 0;
-        let timeLeft = 30;
-        let totalTimeLeft = 405; // 30+120+45+90+60+60
+        let timeLeft = routine[0].duration;
+        let totalTimeLeft = routine.reduce((acc, curr) => acc + curr.duration, 0);
         let isRunning = false;
         let isBreak = false;
         let mainInterval = null;
         let elevatorTimer = null;
         let flickInterval = null;
         let pulseInterval = null;
+        let expansionInterval = null;
         let flickCount = 0;
 
         const startBtn = document.getElementById('start-btn');
@@ -268,16 +269,17 @@
         }
 
         function startExpansion() {
+            clearInterval(expansionInterval);
             const c = document.getElementById('expand-circle');
             let exp = true;
             const run = () => {
-                if (!isRunning || isBreak || currentStep !== 2) return;
+                if (!isRunning || isBreak || routine[currentStep].type !== 'expansion') return;
                 c.style.transform = exp ? "scale(1.5)" : "scale(1.0)";
                 c.querySelector('span').textContent = exp ? "EXPAND" : "REST";
                 exp = !exp;
-                setTimeout(run, 3000);
             };
             run();
+            expansionInterval = setInterval(run, 3000);
         }
 
         function startFlicks() {
@@ -334,6 +336,7 @@
             clearInterval(elevatorTimer);
             clearInterval(flickInterval);
             clearInterval(pulseInterval);
+            clearInterval(expansionInterval);
 
             const next = routine[currentStep + 1];
             nextTitle.textContent = next.title;
@@ -363,8 +366,7 @@
             totalTimeLeft--;
 
             mainTimerVal.textContent = timeLeft;
-            const m = Math.floor(totalTimeLeft / 60), s = totalTimeLeft % 60;
-            totalClock.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            updateTotalClock();
             setProgress((timeLeft / routine[currentStep].duration) * 100);
 
             if (routine[currentStep].type === 'endurance') {
@@ -392,10 +394,13 @@
                 clearInterval(elevatorTimer);
                 clearInterval(flickInterval);
                 clearInterval(pulseInterval);
+                clearInterval(expansionInterval);
                 startBtn.textContent = "RESUME";
             } else {
                 if (startBtn.textContent === "RESTART") {
-                    currentStep = 0; timeLeft = 30; totalTimeLeft = 405;
+                    currentStep = 0;
+                    timeLeft = routine[0].duration;
+                    totalTimeLeft = routine.reduce((acc, curr) => acc + curr.duration, 0);
                 }
                 isRunning = true;
                 mainInterval = setInterval(tick, 1000);
@@ -408,7 +413,13 @@
             location.reload();
         });
 
+        function updateTotalClock() {
+            const m = Math.floor(totalTimeLeft / 60), s = totalTimeLeft % 60;
+            totalClock.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        }
+
         updateUI();
+        updateTotalClock();
     </script>
 </body>
 </html>
